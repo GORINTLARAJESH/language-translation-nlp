@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Translator</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+
+<div class="container">
+<div class="glass-card">
+
+<h1>🌍 AI Translator</h1>
+<p class="subtitle">Smart Translation with Voice & AI</p>
+
+<textarea id="text" placeholder="Type or speak text..."></textarea>
+
+<div id="loader" class="loader"></div>
+
+<div class="controls">
+<label for="language">Select Language:</label>
+<select id="language">
+<option value="en">English</option>
+<option value="te">Telugu</option>
+<option value="hi">Hindi</option>
+<option value="ta">Tamil</option>
+<option value="kn">Kannada</option>
+<option value="ml">Malayalam</option>
+<option value="mr">Marathi</option>
+<option value="gu">Gujarati</option>
+<option value="pa">Punjabi</option>
+<option value="bn">Bengali</option>
+<option value="ur">Urdu</option>
+
+<option value="fr">French</option>
+<option value="es">Spanish</option>
+<option value="de">German</option>
+<option value="it">Italian</option>
+<option value="pt">Portuguese</option>
+<option value="ru">Russian</option>
+
+<option value="zh-cn">Chinese (Simplified)</option>
+<option value="zh-tw">Chinese (Traditional)</option>
+<option value="ja">Japanese</option>
+<option value="ko">Korean</option>
+
+<option value="ar">Arabic</option>
+<option value="tr">Turkish</option>
+<option value="nl">Dutch</option>
+<option value="sv">Swedish</option>
+<option value="fi">Finnish</option>
+<option value="no">Norwegian</option>
+<option value="da">Danish</option>
+
+<option value="pl">Polish</option>
+<option value="cs">Czech</option>
+<option value="hu">Hungarian</option>
+<option value="ro">Romanian</option>
+<option value="el">Greek</option>
+<option value="he">Hebrew</option>
+
+<option value="th">Thai</option>
+<option value="vi">Vietnamese</option>
+<option value="id">Indonesian</option>
+<option value="ms">Malay</option>
+<option value="sw">Swahili</option>
+<option value="am">Amharic</option>
+<option value="zu">Zulu</option>
+</select>
+
+<button onclick="startVoice()">🎤</button>
+<button onclick="translateText()">Translate</button>
+</div>
+
+<div class="output-box">
+<h3>Translation</h3>
+<p id="result"></p>
+</div>
+
+<div class="actions">
+<button onclick="speakText()">🔊 Speak</button>
+<button onclick="copyText()">📋 Copy</button>
+<button onclick="clearText()">🧹 Clear</button>
+</div>
+
+<div class="history">
+<h3>History</h3>
+<ul><template>{% for item in history %}<li>{{ item.input }} ➝ {{ item.output }}</li>{% endfor %}</template></ul>
+</div>
+
+</div>
+</div>
+
+<script>
+let recognition = null;
+let typingTimer;
+const delay = 700;
+
+// 🎤 Voice Input
+function startVoice() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        alert("Use Chrome");
+        return;
+    }
+
+    if (recognition) {
+        recognition.abort();
+        recognition = null;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+
+    recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        document.getElementById("text").value = text;
+        translateText();
+    };
+
+    recognition.onend = () => {
+        recognition = null;
+    };
+
+    recognition.start();
+}
+
+// ⚡ Translate
+function translateText() {
+    const text = document.getElementById("text").value;
+    const lang = document.getElementById("language").value;
+
+    if (!text.trim()) return;
+
+    document.getElementById("loader").style.display = "block";
+
+    fetch('/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text, language: lang })
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("result").innerText = data.translated;
+        document.getElementById("loader").style.display = "none";
+    });
+}
+
+// 🔊 Speak
+function speakText() {
+    const text = document.getElementById("result").innerText;
+    const lang = document.getElementById("language").value;
+
+    if (!text.trim()) {
+        alert("No text to speak!");
+        return;
+    }
+
+    fetch('/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text, language: lang })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.audio) {
+            const audio = new Audio(data.audio);
+            audio.play();
+        } else {
+            alert("Audio error");
+        }
+    });
+}
+// 📋 Copy
+function copyText() {
+    const text = document.getElementById("result").innerText;
+    navigator.clipboard.writeText(text);
+    alert("Copied!");
+}
+
+// 🧹 Clear
+function clearText() {
+    document.getElementById("text").value = "";
+    document.getElementById("result").innerText = "";
+}
+
+// 🌙 Theme Toggle
+function toggleTheme() {
+    document.body.classList.toggle("light-mode");
+}
+
+// ⚡ Real-time typing
+document.getElementById("text").addEventListener("input", () => {
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => {
+        translateText();
+    }, delay);
+});
+</script>
+
+</body>
+</html>
